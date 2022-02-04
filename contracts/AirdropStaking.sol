@@ -42,8 +42,8 @@ contract AirdropStaking is ReentrancyGuard {
     IERC1155 immutable public nft1155;
     IERC20 immutable public marsToken;
     uint256 constant totalAllocPoint=7_200_000;
-    uint256 constant marsPerBlock40=274449076831447290;
-    uint256 constant marsPerBlock60=411673615247170935;
+    uint256 constant marsPerBlock40=277777777777777778;
+    uint256 constant marsPerBlock60=416666666666666667;
     Vault public rewardsVault;
     uint256 public annualBlock;
 
@@ -57,7 +57,7 @@ contract AirdropStaking is ReentrancyGuard {
         marsToken=IERC20(_marsToken);
         
         uint256 lastRewardBlock=block.number > _startBlock ? block.number : _startBlock;
-        annualBlock=lastRewardBlock.add(10493750);//365×28750 ~1 year
+        annualBlock=lastRewardBlock.add(10368000);//360×28800 ~1 year
 
         poolInfo[0]=PoolInfo(15 days, 500*1e18,600_000,600_000*1e18,0,lastRewardBlock,0);
         poolInfo[1]=PoolInfo(30 days, 1000*1e18,600_000,600_000*1e18,0,lastRewardBlock,0);
@@ -69,7 +69,7 @@ contract AirdropStaking is ReentrancyGuard {
         poolInfo[7]=PoolInfo(120 days,20000*1e18,132_000,132_000*1e18,0,lastRewardBlock,0);
         poolInfo[8]=PoolInfo(135 days,25000*1e18,108_000,108_000*1e18,0,lastRewardBlock,0);
         poolInfo[9]=PoolInfo(150 days,50000*1e18,300_000,300_000*1e18,0,lastRewardBlock,0);
-        poolInfo[10]=PoolInfo(180 days,75000*1e18,900_00,900_00*1e18,0,lastRewardBlock,0);
+        poolInfo[10]=PoolInfo(180 days,75000*1e18,900_000,900_000*1e18,0,lastRewardBlock,0);
 
         bytes memory bytecode = type(MarsVault).creationCode;
         bytecode = abi.encodePacked(bytecode, abi.encode(_marsToken));
@@ -97,6 +97,7 @@ contract AirdropStaking is ReentrancyGuard {
             }
             return _to.sub(_from).mul(marsPerBlock60);
         }
+
         return _to.sub(_from).mul(marsPerBlock40);
     }
 
@@ -115,11 +116,11 @@ contract AirdropStaking is ReentrancyGuard {
             }
             accRewardsPerShare = accRewardsPerShare.add(
                                                         marsReward
-                                                        .mul(1e12)
+                                                        .mul(1e18)
                                                         .div(pool.totalDeposited)
                                                     );
         }
-        return user.amount.mul(accRewardsPerShare).div(1e12).sub(user.rewardDebt);
+        return user.amount.mul(accRewardsPerShare).div(1e18).sub(user.rewardDebt);
     }
 
 
@@ -133,16 +134,16 @@ contract AirdropStaking is ReentrancyGuard {
             return;
         }
         uint256 marsReward = getMarsReward(pool.lastRewardBlock, block.number)
-                            .mul(pool.allocPoint)
-                            .div(totalAllocPoint);
-        
+                            .mul(pool.allocPoint).mul(1e18)
+                            .div(totalAllocPoint).div(1e18);
+
         if(pool.rewardsBalance<marsReward){
             marsReward=pool.rewardsBalance;
         }
         pool.rewardsBalance=pool.rewardsBalance.sub(marsReward);
         pool.accRewardsPerShare = pool.accRewardsPerShare
                                 .add(marsReward
-                                    .mul(1e12)
+                                    .mul(1e18)
                                     .div(pool.totalDeposited)
                                 );
         pool.lastRewardBlock = block.number;
@@ -159,11 +160,11 @@ contract AirdropStaking is ReentrancyGuard {
         updatePool(_pid);
         
         if (user.amount > 0) {
-            uint256 pending = user.amount.mul(pool.accRewardsPerShare).div(1e12).sub(user.rewardDebt);
+            uint256 pending = user.amount.mul(pool.accRewardsPerShare).div(1e18).sub(user.rewardDebt);
             if(pending > 0) {
                 rewardsVault.safeRewardsTransfer(msg.sender, pending);
             }
-            user.rewardDebt = user.amount.mul(pool.accRewardsPerShare).div(1e12);
+            user.rewardDebt = user.amount.mul(pool.accRewardsPerShare).div(1e18);
 
         }else{
             require(_amount>=pool.minDeposit,"amount is too low");
@@ -189,10 +190,10 @@ contract AirdropStaking is ReentrancyGuard {
         "deposit must be greater than the minimum or equal to 0");
         
         updatePool(_pid);
-        uint256 pending = user.amount.mul(pool.accRewardsPerShare).div(1e12).sub(user.rewardDebt);
+        uint256 pending = user.amount.mul(pool.accRewardsPerShare).div(1e18).sub(user.rewardDebt);
         if(pending > 0) {
             rewardsVault.safeRewardsTransfer(msg.sender, pending);
-            user.rewardDebt = user.amount.mul(pool.accRewardsPerShare).div(1e12);
+            user.rewardDebt = user.amount.mul(pool.accRewardsPerShare).div(1e18);
         }
 
         if(_amount > 0) {
