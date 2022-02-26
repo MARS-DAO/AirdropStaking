@@ -1,6 +1,5 @@
 const { expectRevert, time,BN,ether} = require('@openzeppelin/test-helpers');
 const { ethers, network } = require('hardhat');
-const { array } = require('yargs');
 const AirdropStaking = artifacts.require('AirdropStaking');
 const MarsDAOStakingNFT= artifacts.require('MarsDAOStakingNFT');
 const MockERC20 = artifacts.require('MockERC20');
@@ -19,7 +18,7 @@ contract('AirdropStaking', ([alice, bob, carol, scot,developer]) => {
         await this.mars.approve(this.airdropStaking.address, web3.utils.toWei("1000000", "ether"), { from: bob });
         await this.mars.approve(this.airdropStaking.address, web3.utils.toWei("1000000", "ether"), { from: carol });
         await this.mars.approve(this.airdropStaking.address, web3.utils.toWei("1000000", "ether"), { from: scot });
-        for(var i=0;i<11;i++){
+        for(var i=1;i<12;i++){
             await this.marsDAOStakingNFT.airDrop([bob,carol,scot],i,1,{ from: alice });
         }
         this.marsVaultAddress=await this.airdropStaking.rewardsVault();
@@ -28,8 +27,8 @@ contract('AirdropStaking', ([alice, bob, carol, scot,developer]) => {
     });
 
     it('deposit', async () => {
-        var amounts=["500","1000","2000","4000","10000","12500","15000","20000","25000","50000","75000"];
-        for(var i=0;i<11;i++){
+        var amounts=["0","500","1000","2000","4000","10000","12500","15000","20000","25000","50000","75000"];
+        for(var i=1;i<12;i++){
             await this.airdropStaking.deposit(i,web3.utils.toWei(amounts[i], "ether"),{ from: bob });
             await this.airdropStaking.deposit(i,web3.utils.toWei(amounts[i], "ether"),{ from: carol });
             await this.airdropStaking.deposit(i,web3.utils.toWei(amounts[i], "ether"),{ from: scot });
@@ -46,7 +45,7 @@ contract('AirdropStaking', ([alice, bob, carol, scot,developer]) => {
         for (let i = 0; i < 28800; ++i) {
             await time.advanceBlock();
         }
-        for(var i=0;i<11;i++){
+        for(var i=1;i<12;i++){
             await this.airdropStaking.deposit(i,0,{ from: bob });
             await this.airdropStaking.deposit(i,0,{ from: carol });
             await this.airdropStaking.deposit(i,0,{ from: scot });
@@ -58,8 +57,8 @@ contract('AirdropStaking', ([alice, bob, carol, scot,developer]) => {
     it('withdraw', async () => {
         await time.increase(time.duration.years(1));
 
-        var amounts=["500","1000","2000","4000","10000","12500","15000","20000","25000","50000","75000"];
-        for(var i=0;i<11;i++){
+        var amounts=["0","500","1000","2000","4000","10000","12500","15000","20000","25000","50000","75000"];
+        for(var i=1;i<12;i++){
             await this.airdropStaking.withdraw(i,web3.utils.toWei(amounts[i], "ether"),{ from: bob });
             await this.airdropStaking.withdraw(i,web3.utils.toWei(amounts[i], "ether"),{ from: carol });
             await this.airdropStaking.withdraw(i,web3.utils.toWei(amounts[i], "ether"),{ from: scot });

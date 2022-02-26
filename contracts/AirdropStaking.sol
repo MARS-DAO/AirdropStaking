@@ -37,7 +37,7 @@ contract AirdropStaking is ReentrancyGuard {
 
     mapping(uint256 => mapping(address => UserInfo)) public userInfo;
 
-    PoolInfo[11] public poolInfo;
+    PoolInfo[12] public poolInfo;
 
     IERC1155 immutable public nft1155;
     IERC20 immutable public marsToken;
@@ -49,6 +49,12 @@ contract AirdropStaking is ReentrancyGuard {
 
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount);
     event Withdraw(address indexed user, uint256 indexed pid, uint256 amount);
+    event WithdrawEmergency(address indexed user, uint256 indexed pid, uint256 amount);
+
+    modifier correctPID(uint256 _pid) {
+        require(_pid>0 && _pid<12,"bad pid");
+        _;
+    }
 
     constructor(address _nft1155,
                 address _marsToken,
@@ -59,17 +65,17 @@ contract AirdropStaking is ReentrancyGuard {
         uint256 lastRewardBlock=block.number > _startBlock ? block.number : _startBlock;
         annualBlock=lastRewardBlock.add(10368000);//360×28800 ~1 year
 
-        poolInfo[0]=PoolInfo(15 days, 500*1e18,600_000,600_000*1e18,0,lastRewardBlock,0);
-        poolInfo[1]=PoolInfo(30 days, 1000*1e18,600_000,600_000*1e18,0,lastRewardBlock,0);
-        poolInfo[2]=PoolInfo(45 days, 2000*1e18,600_000,600_000*1e18,0,lastRewardBlock,0);
-        poolInfo[3]=PoolInfo(60 days, 4000*1e18,600_000,600_000*1e18,0,lastRewardBlock,0);
-        poolInfo[4]=PoolInfo(75 days, 10000*1e18,990_000,990_000*1e18,0,lastRewardBlock,0);
-        poolInfo[5]=PoolInfo(90 days,12500*1e18,1380_000,1380_000*1e18,0,lastRewardBlock,0);
-        poolInfo[6]=PoolInfo(105 days,15000*1e18,990_000,990_000*1e18,0,lastRewardBlock,0);
-        poolInfo[7]=PoolInfo(120 days,20000*1e18,132_000,132_000*1e18,0,lastRewardBlock,0);
-        poolInfo[8]=PoolInfo(135 days,25000*1e18,108_000,108_000*1e18,0,lastRewardBlock,0);
-        poolInfo[9]=PoolInfo(150 days,50000*1e18,300_000,300_000*1e18,0,lastRewardBlock,0);
-        poolInfo[10]=PoolInfo(180 days,75000*1e18,900_000,900_000*1e18,0,lastRewardBlock,0);
+        poolInfo[1]=PoolInfo(15 days, 500*1e18,600_000,600_000*1e18,0,lastRewardBlock,0);
+        poolInfo[2]=PoolInfo(30 days, 1000*1e18,600_000,600_000*1e18,0,lastRewardBlock,0);
+        poolInfo[3]=PoolInfo(45 days, 2000*1e18,600_000,600_000*1e18,0,lastRewardBlock,0);
+        poolInfo[4]=PoolInfo(60 days, 4000*1e18,600_000,600_000*1e18,0,lastRewardBlock,0);
+        poolInfo[5]=PoolInfo(75 days, 10000*1e18,990_000,990_000*1e18,0,lastRewardBlock,0);
+        poolInfo[6]=PoolInfo(90 days,12500*1e18,1380_000,1380_000*1e18,0,lastRewardBlock,0);
+        poolInfo[7]=PoolInfo(105 days,15000*1e18,990_000,990_000*1e18,0,lastRewardBlock,0);
+        poolInfo[8]=PoolInfo(120 days,20000*1e18,132_000,132_000*1e18,0,lastRewardBlock,0);
+        poolInfo[9]=PoolInfo(135 days,25000*1e18,108_000,108_000*1e18,0,lastRewardBlock,0);
+        poolInfo[10]=PoolInfo(150 days,50000*1e18,300_000,300_000*1e18,0,lastRewardBlock,0);
+        poolInfo[11]=PoolInfo(180 days,75000*1e18,900_000,900_000*1e18,0,lastRewardBlock,0);
 
         bytes memory bytecode = type(MarsVault).creationCode;
         bytecode = abi.encodePacked(bytecode, abi.encode(_marsToken));
@@ -101,7 +107,7 @@ contract AirdropStaking is ReentrancyGuard {
         return _to.sub(_from).mul(marsPerBlock40);
     }
 
-    function pendingRewards(uint256 _pid, address _user) external view returns (uint256) {
+    function pendingRewards(uint256 _pid, address _user) external view correctPID(_pid) returns (uint256) {
         PoolInfo memory pool = poolInfo[_pid];
         UserInfo memory user = userInfo[_pid][_user];
         uint256 accRewardsPerShare = pool.accRewardsPerShare;
@@ -124,7 +130,7 @@ contract AirdropStaking is ReentrancyGuard {
     }
 
 
-    function updatePool(uint256 _pid) public {
+    function updatePool(uint256 _pid) internal {
         PoolInfo storage pool = poolInfo[_pid];
         if (block.number <= pool.lastRewardBlock) {
             return;
@@ -150,7 +156,7 @@ contract AirdropStaking is ReentrancyGuard {
     }
 
 
-    function deposit(uint256 _pid, uint256 _amount) public {
+    function deposit(uint256 _pid, uint256 _amount) public correctPID(_pid){
         
         require(nft1155.balanceOf(msg.sender, _pid)>0,
         "you don't have NFT for this pool");
@@ -180,7 +186,7 @@ contract AirdropStaking is ReentrancyGuard {
    
     }
 
-    function withdraw(uint256 _pid, uint256 _amount) public {
+    function withdraw(uint256 _pid, uint256 _amount) public correctPID(_pid){
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
         require(user.amount >= _amount, "withdraw: not good");
@@ -198,10 +204,25 @@ contract AirdropStaking is ReentrancyGuard {
 
         if(_amount > 0) {
             user.amount = user.amount.sub(_amount);
+            pool.totalDeposited=pool.totalDeposited.sub(_amount);
             marsToken.safeTransfer(address(msg.sender), _amount);
             emit Withdraw(msg.sender, _pid, _amount);
         }
     
+    }
+
+    function withdrawEmergency(uint256 _pid) public correctPID(_pid){
+        PoolInfo storage pool = poolInfo[_pid];
+        UserInfo storage user = userInfo[_pid][msg.sender];
+        require(user.amount >0, "withdraw: not good");
+        require(user.unlockTimestamp<block.timestamp,"deposit still locked");
+        uint256 depoBalance=user.amount;
+        user.amount=0;
+        user.rewardDebt=0;
+        pool.totalDeposited=pool.totalDeposited.sub(depoBalance);
+
+        marsToken.safeTransfer(address(msg.sender), depoBalance);
+        emit WithdrawEmergency(msg.sender, _pid, depoBalance);
     }
 
 }

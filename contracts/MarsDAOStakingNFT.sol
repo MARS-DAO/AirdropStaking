@@ -6,7 +6,11 @@ import "./lib/ERC1155.sol";
 import "./lib/Ownable.sol";
 
 
-contract MarsDAOStakingNFT is Ownable, ERC1155("") {
+contract MarsDAOStakingNFT is Ownable,
+    ERC1155("https://ipfs.io/ipfs/QmSg5RZQXEJUCXL2HtE18ywo2SbKkvUFydHPAFSuAt8BPy/{id}.json") {
+
+        string public name="MarsDAO";
+        string public symbol="MDAO";
 
     function mint(address to,uint256 id,uint256 amount) external onlyOwner{
         _mint(to, id, amount, "");
@@ -18,17 +22,12 @@ contract MarsDAOStakingNFT is Ownable, ERC1155("") {
 
     function airDrop(address[] memory recipients,
                         uint256 id,
-                        uint256 amount)external onlyOwner returns (uint256,address){
+                        uint256 amount) external onlyOwner {
         
         uint256 length = recipients.length;
-        uint256 i = 0;
-        
-        do{
+        for (uint256 i = 0; i < length; ++i) {
             _mint(recipients[i], id, amount, "");
-            i++;
-        }while(i < length && gasleft()>500000);
-
-        return (i,(i>0 ? recipients[i-1]:address(0)));
+        }
     }
 
 }
