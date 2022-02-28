@@ -51,7 +51,7 @@ contract('AirdropStaking', ([alice, bob, carol, scot,developer]) => {
             await this.airdropStaking.deposit(i,0,{ from: scot });
         }
         //8000 per day for all pools
-        expect(Math.round((marsVaultBalance-(await this.mars.balanceOf(this.marsVaultAddress)))/1e18)).to.eq(8010);
+        expect(Math.round((marsVaultBalance-(await this.mars.balanceOf(this.marsVaultAddress)))/1e18)).to.eq(8009);
     });
 
     it('withdraw', async () => {

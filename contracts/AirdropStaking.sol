@@ -8,11 +8,7 @@ import "./lib/SafeERC20.sol";
 import "./lib/ReentrancyGuard.sol";
 import "./lib/IERC1155.sol";
 import "./MarsVault.sol";
-//import "./lib/console.sol";
 
-interface Vault{
-    function safeRewardsTransfer(address _to, uint256 _amount) external;
-}
 
 contract AirdropStaking is ReentrancyGuard {
     using SafeMath for uint256;
@@ -44,7 +40,7 @@ contract AirdropStaking is ReentrancyGuard {
     uint256 constant totalAllocPoint=7_200_000;
     uint256 constant marsPerBlock40=277777777777777778;
     uint256 constant marsPerBlock60=416666666666666667;
-    Vault public rewardsVault;
+    MarsVault public rewardsVault;
     uint256 public annualBlock;
 
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount);
@@ -86,7 +82,7 @@ contract AirdropStaking is ReentrancyGuard {
             rewardsVaultAddress := create2(0, add(bytecode, 32), mload(bytecode), salt)
         }
         require(rewardsVaultAddress != address(0), "Create2: Failed on deploy");
-        rewardsVault=Vault(rewardsVaultAddress);
+        rewardsVault=MarsVault(rewardsVaultAddress);
         
     }
 
@@ -156,7 +152,8 @@ contract AirdropStaking is ReentrancyGuard {
     }
 
 
-    function deposit(uint256 _pid, uint256 _amount) public correctPID(_pid){
+    function deposit(uint256 _pid, uint256 _amount) 
+        external correctPID(_pid) nonReentrant{
         
         require(nft1155.balanceOf(msg.sender, _pid)>0,
         "you don't have NFT for this pool");
@@ -170,8 +167,6 @@ contract AirdropStaking is ReentrancyGuard {
             if(pending > 0) {
                 rewardsVault.safeRewardsTransfer(msg.sender, pending);
             }
-            user.rewardDebt = user.amount.mul(pool.accRewardsPerShare).div(1e18);
-
         }else{
             require(_amount>=pool.minDeposit,"amount is too low");
             user.unlockTimestamp=block.timestamp.add(pool.lockUpTime);
@@ -183,10 +178,13 @@ contract AirdropStaking is ReentrancyGuard {
             pool.totalDeposited=pool.totalDeposited.add(_amount);
             emit Deposit(msg.sender, _pid, _amount);
         }
+        user.rewardDebt = user.amount.mul(pool.accRewardsPerShare).div(1e18);
    
     }
 
-    function withdraw(uint256 _pid, uint256 _amount) public correctPID(_pid){
+    function withdraw(uint256 _pid, uint256 _amount) 
+        external correctPID(_pid) nonReentrant{
+
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
         require(user.amount >= _amount, "withdraw: not good");
@@ -199,7 +197,6 @@ contract AirdropStaking is ReentrancyGuard {
         uint256 pending = user.amount.mul(pool.accRewardsPerShare).div(1e18).sub(user.rewardDebt);
         if(pending > 0) {
             rewardsVault.safeRewardsTransfer(msg.sender, pending);
-            user.rewardDebt = user.amount.mul(pool.accRewardsPerShare).div(1e18);
         }
 
         if(_amount > 0) {
@@ -208,21 +205,23 @@ contract AirdropStaking is ReentrancyGuard {
             marsToken.safeTransfer(address(msg.sender), _amount);
             emit Withdraw(msg.sender, _pid, _amount);
         }
+        user.rewardDebt = user.amount.mul(pool.accRewardsPerShare).div(1e18);
     
     }
 
-    function withdrawEmergency(uint256 _pid) public correctPID(_pid){
+    function withdrawEmergency(uint256 _pid) 
+        external correctPID(_pid) nonReentrant{
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
         require(user.amount >0, "withdraw: not good");
         require(user.unlockTimestamp<block.timestamp,"deposit still locked");
-        uint256 depoBalance=user.amount;
+        uint256 withdrawAmount=user.amount;
         user.amount=0;
         user.rewardDebt=0;
-        pool.totalDeposited=pool.totalDeposited.sub(depoBalance);
+        pool.totalDeposited=pool.totalDeposited.sub(withdrawAmount);
 
-        marsToken.safeTransfer(address(msg.sender), depoBalance);
-        emit WithdrawEmergency(msg.sender, _pid, depoBalance);
+        marsToken.safeTransfer(address(msg.sender), withdrawAmount);
+        emit WithdrawEmergency(msg.sender, _pid, withdrawAmount);
     }
 
 }
