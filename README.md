@@ -11,6 +11,7 @@ Network: **Binance Smart Chain**.
 | ----------------- | ------------------------------------------ |
 | MarsDAOStakingNFT | 0x7e885E0E39fA8cF6cAE9019C3590F4B771ceb838 |
 | AirdropStaking    | 0xcB7AcD639F26Ef49c2E8CeA4EE0177DAFc577ce4 |
+| MarsVault         | 0xd2B454ff649B78199d02bFa5Aa68116484a4dA80 |
 
 ## Farming
 
